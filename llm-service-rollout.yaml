@@ -1,0 +1,61 @@
+# llm-service-rollout.yaml
+apiVersion: argoproj.io/v1alpha1
+kind: Rollout
+metadata:
+  name: llm-service
+  namespace: llm
+spec:
+  replicas: 2
+  strategy:
+    blueGreen:
+      activeService: llm-service
+      previewService: llm-service-preview
+      autoPromotionEnabled: false
+  selector:
+    matchLabels:
+      app: llm-service
+  template:
+    metadata:
+      labels:
+        app: llm-service
+    spec:
+      containers:
+        - name: llm-service
+          image: crummycrushed/ops-service:a3e1edd8a14ce2b55fa46b7dbc5788fcef0790ec
+          ports:
+            - containerPort: 8000
+          env:
+            - name: OLLAMA_HOST
+              value: "ollama"
+            - name: OLLAMA_PORT
+              value: "11434"
+          volumeMounts:
+            - name: logs
+              mountPath: /app/logs
+      volumes:
+        - name: logs
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: llm-service
+  namespace: llm
+spec:
+  selector:
+    app: llm-service
+  ports:
+    - port: 80
+      targetPort: 8000
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: llm-service-preview
+  namespace: llm
+spec:
+  selector:
+    app: llm-service
+  ports:
+    - port: 80
+      targetPort: 8000
